@@ -1,0 +1,6 @@
+/app/tmp_modelo/
+
+/app/__pycache__/
+
+
+*.env
