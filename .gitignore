@@ -2,5 +2,8 @@
 
 /app/__pycache__/
 
+command.txt
+
+*.pyc
 
 *.env

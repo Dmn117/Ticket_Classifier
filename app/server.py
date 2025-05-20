@@ -41,43 +41,43 @@ def custom_openapi():
 app.openapi = custom_openapi
 
 
-modelo_nombre = "distilbert-base-uncased"
-tokenizer = AutoTokenizer.from_pretrained(modelo_nombre)
-modelo = AutoModelForSequenceClassification.from_pretrained(modelo_nombre, num_labels=2)
-clasificador = pipeline("text-classification", model=modelo, tokenizer=tokenizer)
+model_name = "distilbert-base-uncased"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSequenceClassification.from_pretrained(model_name, num_labels=2)
+classifier = pipeline("text-classification", model=model, tokenizer=tokenizer)
 
 
-datos_entrenamiento = []
+training_data = []
 
 
-class EntradaClasificacion(BaseModel):
-    descripcion: str
+class ClassificationData(BaseModel):
+    description: str
 
-class EntradaEntrenamiento(BaseModel):
-    descripcion: str
-    etiqueta: int
-
-
-
-@app.post("/clasificar")
-def clasificar_ticket(entrada: EntradaClasificacion, current_user: dict = Depends(get_current_user)):
-    resultado = clasificador(entrada.descripcion)
-    return {"clasificacion": resultado[0]["label"], "score": resultado[0]["score"]}
+class TrainingData(BaseModel):
+    description: str
+    label: int
 
 
 
-@app.post("/entrenar")
-def entrenar_nuevo_modelo(datos: List[EntradaEntrenamiento], current_user: dict = Depends(get_current_user)):
-    global modelo, clasificador, datos_entrenamiento
+@app.post("/classify")
+def classify(entry: ClassificationData, current_user: dict = Depends(get_current_user)):
+    result = classifier(entry.description)
+    return {"classification": result[0]["label"], "score": result[0]["score"]}
 
-    if len(datos) < 2:
+
+
+@app.post("/train")
+def train(entry: List[TrainingData], current_user: dict = Depends(get_current_user)):
+    global model, classifier, training_data
+
+    if len(entry) < 2:
         raise HTTPException(status_code=400, detail="Se requieren al menos 2 ejemplos para entrenar.")
 
-    datos_entrenamiento = datos
+    training_data = entry
 
     dataset = Dataset.from_dict({
-        "text": [d.descripcion for d in datos_entrenamiento],
-        "label": [d.etiqueta for d in datos_entrenamiento]
+        "text": [d.description for d in training_data],
+        "label": [d.label for d in training_data]
     })
 
     def tokenize_fn(example):
@@ -93,24 +93,24 @@ def entrenar_nuevo_modelo(datos: List[EntradaEntrenamiento], current_user: dict 
         save_strategy="no"
     )
 
-    num_labels=max(d.etiqueta for d in datos_entrenamiento) + 1
+    num_labels=max(d.label for d in training_data) + 1
 
-    nuevo_modelo = AutoModelForSequenceClassification.from_pretrained(
-        modelo_nombre, 
+    new_model = AutoModelForSequenceClassification.from_pretrained(
+        model_name, 
         num_labels=num_labels,
         id2label={i: str(i) for i in range(num_labels)},
         label2id={str(i): i for i in range(num_labels)}
     )
 
     trainer = Trainer(
-        model=nuevo_modelo,
+        model=new_model,
         args=args,
         train_dataset=tokenized
     )
 
     trainer.train()
 
-    modelo = nuevo_modelo
-    clasificador = pipeline("text-classification", model=nuevo_modelo, tokenizer=tokenizer, return_all_scores=False)
+    model = new_model
+    classifier = pipeline("text-classification", model=new_model, tokenizer=tokenizer, return_all_scores=False)
 
-    return {"mensaje": "Modelo reentrenado con éxito", "ejemplos": len(datos_entrenamiento)}
+    return {"message": "Modelo reentrenado con éxito", "examples": len(training_data)}
