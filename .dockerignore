@@ -1,0 +1,5 @@
+app/tmp_modelo/
+
+app/__pycache__/
+
+app/public.pem

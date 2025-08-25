@@ -1,8 +1,10 @@
-/app/tmp_modelo/
+app/tmp_modelo/
 
-/app/__pycache__/
+app/__pycache__/
 
-command.txt
+app/command.txt
+
+keys/
 
 *.pyc
 
